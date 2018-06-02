@@ -1,0 +1,39 @@
+---
+ip: "192.168.10.10"
+memory: 2048
+cpus: 2
+provider: virtualbox
+
+# auto_upgrade: true
+# box: ubuntu/bionic64
+# box_check_update: true
+# box_server_url: 
+# docker: true
+# hostname: devkit-java
+# Virtual Machine Name
+# name: devkit-java
+# mysql: false
+registry-mirrors: '["https://registry.docker-cn.com"]'
+timezone: Asia/Shanghai
+
+authorize: ~/.ssh/id_rsa.pub
+
+keys:
+    - ~/.ssh/id_rsa
+
+# folders:
+#     - map: ~/code
+#       to: /home/vagrant/code
+
+sites:
+    - map: app.test
+
+databases:
+    - devkit
+
+# ports:
+#     - send: 50000
+#       to: 5000
+#     - send: 7777
+#       to: 777
+#       protocol: udp
