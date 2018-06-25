@@ -12,8 +12,7 @@ fi
 # Add Docker PPA
 
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-#add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu artful stable"
+add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 apt-get update
 
 # Install Docker
