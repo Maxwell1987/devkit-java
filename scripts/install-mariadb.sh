@@ -44,6 +44,7 @@ apt-get install -y mariadb-server
 # Configure Maria Remote Access
 
 sed -i '/^bind-address/s/bind-address.*=.*/bind-address = 0.0.0.0/' /etc/mysql/my.cnf
+echo -e "[mysqld]\ndefault-time-zone='+08:00'" | tee /etc/mysql/conf.d/timezone.cnf
 
 mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO root@'0.0.0.0' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
 service mysql restart
