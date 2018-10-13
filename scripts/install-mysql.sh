@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-export DEBIAN_FRONTEND=noninteractive
-# Check If Maria Has Been Installed
+set -e
 
 if [ -f /home/vagrant/.devkit_java_mysql ]
 then
@@ -9,47 +8,61 @@ then
     exit 0
 fi
 
-
-# Remove MariaDB
-
-apt-get remove -y --purge mariadb-server
-apt-get autoremove -y
-apt-get autoclean
-
-rm -rf /var/lib/mysql
-rm -rf /var/log/mysql
-rm -rf /etc/mysql
-if [ -f /home/vagrant/.devkit_java_mariadb ]
-then
-    rm /home/vagrant/.devkit_java_mariadb
+if [ ! -f /home/vagrant/.devkit_java_docker ]; then
+    /vagrant/scripts/install-docker.sh
 fi
 
+if [ ! -f /home/vagrant/.devkit_java_docker ]; then
+    echo "MySQL: docker installed failed, must install docker first."
+    exit 0
+fi
 
-# Set The Automated Root Password
+mkdir -p /opt/mysql/run/secrets
+echo "secret" | tee /opt/mysql/run/secrets/mysql-root-password
+mkdir -p /opt/mysql/etc/mysql/conf.d
+echo -e "[mysqld]\ndefault-time-zone='+08:00'" | tee /opt/mysql/etc/mysql/conf.d/timezone.cnf
 
-export DEBIAN_FRONTEND=noninteractive
+docker image pull mysql:latest
+docker container stop mariadb 2> /dev/null || true
 
-debconf-set-selections <<< "mysql-server mysql-server/data-dir select ''"
-debconf-set-selections <<< "mysql-server mysql-server/root_password password secret"
-debconf-set-selections <<< "mysql-server mysql-server/root_password_again password secret"
+docker container run \
+  -d \
+  --name mysql \
+  --restart unless-stopped \
+  -e MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql-root-password \
+  -p 3306:3306 \
+  -v /opt/mysql/etc/mysql/conf.d:/etc/mysql/conf.d \
+  -v /opt/mysql/run/secrets:/run/secrets \
+  -v /opt/mysql/var/lib/mysql:/var/lib/mysql \
+  mysql:latest
 
-# Install MySQL
+set +e
 
-apt-get update
-apt-get install -y mysql-server
+echo -n "Waiting for mysql startup"
 
-# Configure MySQL Remote Access
+for i in {1..20}; do
+    docker container logs mysql 2>&1 | grep -q 'MySQL init process done. Ready for start up.'
 
-sed -i '/^bind-address/s/bind-address.*=.*/bind-address = 0.0.0.0/' /etc/mysql/my.cnf
-echo -e "[mysqld]\ndefault-time-zone='+08:00'" | tee /etc/mysql/conf.d/timezone.cnf
+    if [ $? -ne 0 ]; then
+        sleep 1
+        echo -n "."
+    else
+        break
+    fi
+done
 
-mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO root@'0.0.0.0' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
-service mysql restart
+while ! nc -w 1 localhost 3306 | grep -qP ".{10}"; do
+    sleep 1
+    echo -n "+"
+done
 
-mysql --user="root" --password="secret" -e "CREATE USER 'devkit'@'0.0.0.0' IDENTIFIED BY 'secret';"
-mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'0.0.0.0' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
-mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'%' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
-mysql --user="root" --password="secret" -e "FLUSH PRIVILEGES;"
-service mysql restart
+echo
+
+set -e
+
+docker container exec mysql \
+  mysql --user="root" --password="secret" -e "CREATE USER 'devkit'@'%' IDENTIFIED BY 'secret';"
+docker container exec mysql \
+  mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'%';"
 
 touch /home/vagrant/.devkit_java_mysql

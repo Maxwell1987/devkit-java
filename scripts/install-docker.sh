@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
+set -e
+
 export DEBIAN_FRONTEND=noninteractive
 # Check If Maria Has Been Installed
 
-if [ -f /home/vagrant/.devkit_java_docker ]
-then
+if [ -f /home/vagrant/.devkit_java_docker ]; then
     echo "Docker already installed."
     exit 0
 fi
@@ -12,7 +13,7 @@ fi
 # Add Docker PPA
 
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt-get update
 
 # Install Docker

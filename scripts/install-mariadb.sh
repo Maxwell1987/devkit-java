@@ -1,58 +1,66 @@
 #!/usr/bin/env bash
 
-export DEBIAN_FRONTEND=noninteractive
-# Check If Maria Has Been Installed
+set -e
 
 if [ -f /home/vagrant/.devkit_java_mariadb ]
 then
-    echo "MariaDB already installed."
+    echo "Mariadb already installed."
     exit 0
 fi
 
-# Remove MySQL
-
-apt-get remove -y --purge mysql-server mysql-client mysql-common
-apt-get autoremove -y
-apt-get autoclean
-
-rm -rf /var/lib/mysql
-rm -rf /var/log/mysql
-rm -rf /etc/mysql
-if [ -f /home/vagrant/.devkit_java_mysql ]
-then
-    rm /home/vagrant/.devkit_java_mysql
+if [ ! -f /home/vagrant/.devkit_java_docker ]; then
+    /vagrant/scripts/install-docker.sh
 fi
 
-# Add Maria PPA
+if [ ! -f /home/vagrant/.devkit_java_docker ]; then
+    echo "Mariadb: docker installed failed, must install docker first."
+    exit 0
+fi
 
-sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
-sudo add-apt-repository 'deb [arch=amd64] https://mirrors.shu.edu.cn/mariadb/repo/10.3/ubuntu bionic main'
-apt-get update
+mkdir -p /opt/mariadb/run/secrets
+echo "secret" | tee /opt/mariadb/run/secrets/mysql-root-password
+mkdir -p /opt/mariadb/etc/mysql/conf.d
+echo -e "[mysqld]\ndefault-time-zone='+08:00'" | tee /opt/mariadb/etc/mysql/conf.d/timezone.cnf
 
-# Set The Automated Root Password
+docker image pull mariadb:latest
+docker container stop mysql 2> /dev/null || true
 
-export DEBIAN_FRONTEND=noninteractive
+docker container run \
+  -d \
+  --name mariadb \
+  --restart unless-stopped \
+  -e MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql-root-password \
+  -p 3306:3306 \
+  -v /opt/mariadb/etc/mysql/conf.d:/etc/mysql/conf.d \
+  -v /opt/mariadb/run/secrets:/run/secrets \
+  -v /opt/mariadb/var/lib/mysql:/var/lib/mysql \
+  mariadb:latest
 
-debconf-set-selections <<< "mariadb-server mysql-server/data-dir select ''"
-debconf-set-selections <<< "mariadb-server mysql-server/root_password password secret"
-debconf-set-selections <<< "mariadb-server mysql-server/root_password_again password secret"
+set +e
 
-# Install MariaDB
+echo -n "Waiting for mariadb startup"
 
-apt-get install -y mariadb-server
+for i in {1..10}; do
+    docker container logs mariadb 2>&1 | grep -q 'MySQL init process done. Ready for start up.'
 
-# Configure Maria Remote Access
+    if [ $? -ne 0 ]; then
+        sleep 1
+        echo -n "."
+    else
+        break
+    fi
+done
 
-sed -i '/^bind-address/s/bind-address.*=.*/bind-address = 0.0.0.0/' /etc/mysql/my.cnf
-echo -e "[mysqld]\ndefault-time-zone='+08:00'" | tee /etc/mysql/conf.d/timezone.cnf
+while ! nc -w 1 localhost 3306 | grep -qP ".{10}"; do
+    sleep 1
+    echo -n "+"
+done
 
-mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO root@'0.0.0.0' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
-service mysql restart
+echo
 
-mysql --user="root" --password="secret" -e "CREATE USER 'devkit'@'0.0.0.0' IDENTIFIED BY 'secret';"
-mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'0.0.0.0' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
-mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'%' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
-mysql --user="root" --password="secret" -e "FLUSH PRIVILEGES;"
-service mysql restart
+set -e
+
+docker container exec mariadb \
+  mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'%' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
 
 touch /home/vagrant/.devkit_java_mariadb

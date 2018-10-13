@@ -161,12 +161,32 @@ class DevkitJava
             end
         end
 
+        # Add items to /etc/hosts
+        if settings.has_key?("hosts")
+            settings["hosts"].each do |host|
+                config.vm.provision "shell" do |s|
+                    s.name = "Add '" + host + "' to /etc/hosts."
+                    s.inline = "echo '" + host + "' | tee -a /etc/hosts > /dev/null"
+                end
+            end
+        end
+
+        # Install Docker
+        if !settings.has_key?("docker") || settings["docker"]
+            config.vm.provision "shell" do |s|
+                s.path = scriptDir + "/install-docker.sh"
+                s.args = [settings["registry-mirrors"]]
+            end
+        end
+
         # Install MariaDB or MySQL
         if settings.has_key?("mysql") && settings["mysql"]
+            db_container_name = "mysql"
             config.vm.provision "shell" do |s|
                 s.path = scriptDir + "/install-mysql.sh"
             end
         else
+            db_container_name = "mariadb"
             config.vm.provision "shell" do |s|
                 s.path = scriptDir + "/install-mariadb.sh"
             end
@@ -178,16 +198,8 @@ class DevkitJava
                 config.vm.provision "shell" do |s|
                     s.name = "Creating MySQL Database: " + db
                     s.path = scriptDir + "/create-mysql.sh"
-                    s.args = [db]
+                    s.args = [db, db_container_name]
                 end
-            end
-        end
-
-        # Install Docker
-        if !settings.has_key?("docker") || settings["docker"]
-            config.vm.provision "shell" do |s|
-                s.path = scriptDir + "/install-docker.sh"
-                s.args = [settings["registry-mirrors"]]
             end
         end
 
