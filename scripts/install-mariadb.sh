@@ -61,6 +61,6 @@ echo
 set -e
 
 docker container exec mariadb \
-  mysql --user="root" --password="secret" -e "GRANT ALL ON *.* TO 'devkit'@'%' IDENTIFIED BY 'secret' WITH GRANT OPTION;"
+  mysql --user="root" --password="secret" -e "CREATE USER 'devkit'@'%' IDENTIFIED BY 'secret';"
 
 touch /home/vagrant/.devkit_java_mariadb
