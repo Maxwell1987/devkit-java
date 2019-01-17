@@ -11,7 +11,7 @@ class DevkitJava
         config.vm.box = settings["box"] ||= "ubuntu/bionic64"
 
         if settings.has_key?("box_check_update")
-        	config.vm.box_check_update = settings["box_check_update"]
+            config.vm.box_check_update = settings["box_check_update"]
         end
 
         if settings.has_key?("box_server_url")
@@ -166,7 +166,8 @@ class DevkitJava
             settings["hosts"].each do |host|
                 config.vm.provision "shell" do |s|
                     s.name = "Add '" + host + "' to /etc/hosts."
-                    s.inline = "echo '" + host + "' | tee -a /etc/hosts > /dev/null"
+                    s.inline = "grep -xq \"$1\" /etc/hosts || echo \"\n$1\" | tee -a /etc/hosts > /dev/null"
+                    s.args = [host]
                 end
             end
         end
