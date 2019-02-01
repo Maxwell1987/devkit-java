@@ -20,7 +20,7 @@ fi
 mkdir -p /opt/mysql/run/secrets
 echo "secret" | tee /opt/mysql/run/secrets/mysql-root-password
 mkdir -p /opt/mysql/etc/mysql/conf.d
-echo -e "[mysqld]\ndefault-time-zone='+08:00'" | tee /opt/mysql/etc/mysql/conf.d/timezone.cnf
+cp /vagrant/templates/mysql/conf.d/* /opt/mariadb/etc/mysql/conf.d/
 
 docker image pull mysql:latest
 docker container stop mariadb 2> /dev/null || true
