@@ -38,5 +38,6 @@ databases:
 #       to: 777
 #       protocol: udp
 
-hosts:
-    - 54.192.145.253 download.docker.com
+# hosts:
+#     - 52.84.49.49 download.docker.com
+#     - 91.189.91.23 archive.ubuntu.com
