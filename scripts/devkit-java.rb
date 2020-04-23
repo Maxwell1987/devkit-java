@@ -1,5 +1,5 @@
 class DevkitJava
-    def DevkitJava.configure(config, settings)
+    def self.configure(config, settings)
         # Configure Local Variable To Access Scripts From Remote Location
         scriptDir = File.dirname(__FILE__)
 
@@ -8,7 +8,7 @@ class DevkitJava
 
         # Configure The Box
         config.vm.define settings["name"] ||= "devkit-java"
-        config.vm.box = settings["box"] ||= "ubuntu/bionic64"
+        config.vm.box = settings["box"] ||= "ubuntu/focal64"
 
         if settings.has_key?("box_check_update")
             config.vm.box_check_update = settings["box_check_update"]
